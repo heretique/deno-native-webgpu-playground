@@ -1,4 +1,4 @@
-import { EventType, WindowBuilder } from "https://deno.land/x/sdl2/mod.ts";
+import { EventType, WindowBuilder, Window } from "https://deno.land/x/sdl2/mod.ts";
 import { mat4, vec3 } from "npm:wgpu-matrix@2.8.0";
 import {
   cubeVertexArray,
@@ -10,8 +10,18 @@ import {
 
 import basicVertWGSL from "./src/shaders/basic.vert.wgsl.ts";
 import vertexPositionColorWGSL from "./src/shaders/vertexPositionColor.frag.wgsl.ts";
+import { SDL_WindowEventID } from "./src/SDL2/Constants.ts";
 
-const window = new WindowBuilder("Hello, Deno!", 800, 600).build();
+
+type WebGPUContext = {
+  adapter: GPUAdapter;
+  device: GPUDevice;
+  context: GPUCanvasContext;
+  presentationFormat: GPUTextureFormat;
+  currentTexture: GPUTexture;
+}
+
+const window = new WindowBuilder("Hello, Deno!", 800, 600).resizable().build();
 
 const adapter = await navigator.gpu.requestAdapter();
 if (!adapter) {
@@ -32,7 +42,7 @@ context.configure({
   height: 600,
 });
 
-const currentTexture = context.getCurrentTexture();
+let currentTexture = context.getCurrentTexture();
 
 // Create a vertex buffer from the cube data.
 const verticesBuffer = device.createBuffer({
@@ -99,7 +109,7 @@ const pipeline = device.createRenderPipeline({
   },
 });
 
-const depthTexture = device.createTexture({
+let depthTexture = device.createTexture({
   size: [currentTexture.width, currentTexture.height],
   format: "depth24plus",
   usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -134,7 +144,7 @@ const renderPassDescriptor: GPURenderPassDescriptor = {
     },
   ],
   depthStencilAttachment: {
-    view: depthTexture.createView(),
+    view: undefined, // Assigned later
 
     depthClearValue: 1.0,
     depthLoadOp: "clear",
@@ -142,9 +152,30 @@ const renderPassDescriptor: GPURenderPassDescriptor = {
   },
 };
 
-const aspect = currentTexture.width / currentTexture.height;
-const projectionMatrix = mat4.perspective((2 * Math.PI) / 5, aspect, 1, 100.0);
+
+let aspect = currentTexture.width / currentTexture.height;
+let projectionMatrix = mat4.perspective((2 * Math.PI) / 5, aspect, 1, 100.0);
 const modelViewProjectionMatrix = mat4.create();
+
+function onResize(width: number, height: number) {
+  context.configure({
+    device,
+    format: presentationFormat,
+    width,
+    height,
+  });
+
+  currentTexture = context.getCurrentTexture();
+
+  depthTexture = device.createTexture({
+    size: [currentTexture.width, currentTexture.height],
+    format: "depth24plus",
+    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+
+  aspect = currentTexture.width / currentTexture.height;
+  projectionMatrix = mat4.perspective((2 * Math.PI) / 5, aspect, 1, 100.0);
+}
 
 function getTransformationMatrix() {
   const viewMatrix = mat4.identity();
@@ -172,9 +203,9 @@ function frame() {
     transformationMatrix.byteLength
   );
 
-  renderPassDescriptor.colorAttachments[0].view = context
-    .getCurrentTexture()
-    .createView();
+  renderPassDescriptor.colorAttachments[0].view = context.getCurrentTexture().createView();
+
+  renderPassDescriptor.depthStencilAttachment.view = depthTexture.createView();
 
   const commandEncoder = device.createCommandEncoder();
   const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
@@ -193,7 +224,10 @@ for await (const event of window.events()) {
     (event.type === EventType.KeyDown && event.keysym.sym === 27) /* Escape */
   ) {
     break;
-  } else if (event.type == EventType.Draw) {
+  } else if (event.type === EventType.Draw) {
     frame();
+  } else if (event.type === EventType.WindowEvent && event.event === SDL_WindowEventID.SDL_WINDOWEVENT_SIZE_CHANGED) {
+    console.log("Resized", event.data1, event.data2);
+    onResize(event.data1, event.data2);
   }
 }
