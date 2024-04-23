@@ -1,4 +1,4 @@
-import { EventType, WindowBuilder, Window } from "https://deno.land/x/sdl2/mod.ts";
+import { EventType, WindowBuilder } from "https://deno.land/x/sdl2/mod.ts";
 import { mat4, vec3 } from "npm:wgpu-matrix@2.8.0";
 import {
   cubeVertexArray,
@@ -6,21 +6,11 @@ import {
   cubeUVOffset,
   cubePositionOffset,
   cubeVertexCount,
-} from "./src/Cube.ts";
+} from "../src/Cube.ts";
 
-import basicVertWGSL from "./src/shaders/basic.vert.wgsl.ts";
-import vertexPositionColorWGSL from "./src/shaders/vertexPositionColor.frag.wgsl.ts";
-import { SDL_WindowEventID } from "./src/SDL2/Constants.ts";
-
-
-type WebGPUContext = {
-  adapter: GPUAdapter;
-  device: GPUDevice;
-  context: GPUCanvasContext;
-  presentationFormat: GPUTextureFormat;
-  currentTexture: GPUTexture;
-}
-
+import basicVertWGSL from "../src/shaders/basic.vert.wgsl.ts";
+import vertexPositionColorWGSL from "../src/shaders/vertexPositionColor.frag.wgsl.ts";
+import { SDL_WindowEventID } from "../src/SDL2/Constants.ts";
 const window = new WindowBuilder("Hello, Deno!", 800, 600).resizable().build();
 
 const adapter = await navigator.gpu.requestAdapter();
@@ -152,7 +142,6 @@ const renderPassDescriptor: GPURenderPassDescriptor = {
   },
 };
 
-
 let aspect = currentTexture.width / currentTexture.height;
 let projectionMatrix = mat4.perspective((2 * Math.PI) / 5, aspect, 1, 100.0);
 const modelViewProjectionMatrix = mat4.create();
@@ -203,7 +192,9 @@ function frame() {
     transformationMatrix.byteLength
   );
 
-  renderPassDescriptor.colorAttachments[0].view = context.getCurrentTexture().createView();
+  renderPassDescriptor.colorAttachments[0].view = context
+    .getCurrentTexture()
+    .createView();
 
   renderPassDescriptor.depthStencilAttachment.view = depthTexture.createView();
 
@@ -226,8 +217,10 @@ for await (const event of window.events()) {
     break;
   } else if (event.type === EventType.Draw) {
     frame();
-  } else if (event.type === EventType.WindowEvent && event.event === SDL_WindowEventID.SDL_WINDOWEVENT_SIZE_CHANGED) {
-    console.log("Resized", event.data1, event.data2);
+  } else if (
+    event.type === EventType.WindowEvent &&
+    event.event === SDL_WindowEventID.SDL_WINDOWEVENT_SIZE_CHANGED
+  ) {
     onResize(event.data1, event.data2);
   }
 }
