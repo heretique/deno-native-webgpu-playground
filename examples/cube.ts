@@ -11,7 +11,9 @@ import {
 import basicVertWGSL from "../src/shaders/basic.vert.wgsl.ts";
 import vertexPositionColorWGSL from "../src/shaders/vertexPositionColor.frag.wgsl.ts";
 import { SDL_WindowEventID } from "../src/SDL2/Constants.ts";
-const window = new WindowBuilder("Hello, Deno!", 800, 600).resizable().build();
+const window = new WindowBuilder("Deno + WebGPU = ❤️", 800, 600)
+  .resizable()
+  .build();
 
 const adapter = await navigator.gpu.requestAdapter();
 if (!adapter) {
