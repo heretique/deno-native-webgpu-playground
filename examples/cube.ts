@@ -1,4 +1,4 @@
-import { EventType, WindowBuilder } from "https://deno.land/x/sdl2/mod.ts";
+import { EventType, WindowBuilder } from "jsr:@divy/sdl2@0.14.0";
 import { mat4, vec3 } from "npm:wgpu-matrix@2.8.0";
 import {
   cubeVertexArray,
@@ -11,7 +11,7 @@ import {
 import basicVertWGSL from "../src/shaders/basic.vert.wgsl.ts";
 import vertexPositionColorWGSL from "../src/shaders/vertexPositionColor.frag.wgsl.ts";
 import { SDL_WindowEventID } from "../src/SDL2/Constants.ts";
-const window = new WindowBuilder("Deno + WebGPU = ❤️", 800, 600)
+const window = new WindowBuilder("Deno + SDL2 + WebGPU = ❤️", 800, 600)
   .resizable()
   .build();
 
@@ -22,7 +22,7 @@ if (!adapter) {
 const device = await adapter.requestDevice();
 
 /* Returns a Deno.UnsafeWindowSurface */
-const surface = window.windowSurface();
+const surface = window.windowSurface(800, 600);
 /* Returns a WebGPU GPUCanvasContext */
 const context = surface.getContext("webgpu");
 const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
@@ -176,7 +176,7 @@ function getTransformationMatrix() {
     viewMatrix,
     vec3.fromValues(Math.sin(now), Math.cos(now), 0),
     1,
-    viewMatrix
+    viewMatrix,
   );
 
   mat4.multiply(projectionMatrix, viewMatrix, modelViewProjectionMatrix);
@@ -191,7 +191,7 @@ function frame() {
     0,
     transformationMatrix.buffer,
     transformationMatrix.byteOffset,
-    transformationMatrix.byteLength
+    transformationMatrix.byteLength,
   );
 
   renderPassDescriptor.colorAttachments[0].view = context
